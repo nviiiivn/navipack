@@ -1,0 +1,28 @@
+# build output and map data: big, and rebuilt from OSM
+*.navipack
+*.pmtiles
+*.osm.pbf
+*.tar
+*.rg
+*.sqlite
+*.sqlite-journal
+*.db
+out/
+work/
+data/
+
+# secrets and local env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+.playwright-mcp/
+.DS_Store

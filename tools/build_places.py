@@ -26,7 +26,8 @@ import subprocess
 import sys
 import tempfile
 
-REPO = pathlib.Path(__file__).resolve().parent.parent
+#: The Navi app tree (see build_pack.py); NAVIPACK_APP points somewhere else.
+REPO = pathlib.Path(os.environ.get("NAVIPACK_APP") or pathlib.Path(__file__).resolve().parent.parent)
 sys.path[:0] = [str(REPO / "apps" / "navi"), str(REPO / "packages" / "agedashii-washi")]
 from agedashii_navi.places import norm_tokens  # noqa: E402
 

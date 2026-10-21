@@ -30,7 +30,9 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-APP = os.path.dirname(HERE)          # tools/ lives inside the app
+#: The Navi app tree whose packages these tools import. tools/ normally lives
+#: inside it; NAVIPACK_APP points somewhere else.
+APP = os.environ.get("NAVIPACK_APP") or os.path.dirname(HERE)
 REPO = os.path.dirname(os.path.dirname(APP))
 sys.path[:0] = [os.path.join(APP, "apps", "navi"),
                 os.path.join(APP, "packages", "agedashii-washi"),
@@ -77,7 +79,8 @@ def streets_from_pbf(pbf):
     import json
     import subprocess
     import tempfile
-    with tempfile.TemporaryDirectory(dir="/home/demo/Sandbox/tmp") as work:
+    # NAVIPACK_TMP: osmium's export is large, and /tmp is often a small tmpfs.
+    with tempfile.TemporaryDirectory(dir=os.environ.get("NAVIPACK_TMP")) as work:
         roads = os.path.join(work, "roads.osm.pbf")
         seq = os.path.join(work, "roads.geojsonseq")
         subprocess.run(["osmium", "tags-filter", "-O", "-o", roads, pbf, "w/highway"],

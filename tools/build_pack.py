@@ -44,10 +44,15 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-APP = os.path.dirname(HERE)          # tools/ lives inside the app
+#: The Navi app tree whose packages these tools import. tools/ normally lives
+#: inside it; NAVIPACK_APP points somewhere else.
+APP = os.environ.get("NAVIPACK_APP") or os.path.dirname(HERE)
 REPO = os.path.dirname(os.path.dirname(APP))
-WORK = "/home/demo/Sandbox/tmp/packbuild"
-PMTILES = os.path.expanduser("~/.local/bin/go-pmtiles")
+#: Downloads, the Valhalla build and finished packs land here.
+WORK = os.path.expanduser(os.environ.get("NAVIPACK_WORK", "~/.cache/navipack"))
+#: The go-pmtiles CLI.
+PMTILES = (os.environ.get("PMTILES") or shutil.which("pmtiles")
+           or os.path.expanduser("~/.local/bin/go-pmtiles"))
 #: The container already running here, so no image is pulled for a build.
 VALHALLA_IMAGE = "ghcr.io/valhalla/valhalla-scripted:latest"
 #: What the app calls the router's tiles - the version is part of the name.

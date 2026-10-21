@@ -35,7 +35,9 @@ import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-APP = os.path.dirname(HERE)          # tools/ lives inside the app
+#: The Navi app tree whose packages these tools import. tools/ normally lives
+#: inside it; NAVIPACK_APP points somewhere else.
+APP = os.environ.get("NAVIPACK_APP") or os.path.dirname(HERE)
 REPO = os.path.dirname(os.path.dirname(APP))
 sys.path[:0] = [os.path.join(APP, "apps", "navi"),
                 os.path.join(APP, "packages", "agedashii-washi"),
@@ -149,7 +151,8 @@ def main():
                         best, gap = name, d
         return best
 
-    with tempfile.TemporaryDirectory(dir="/home/demo/Sandbox/tmp") as work:
+    # NAVIPACK_TMP: osmium's export is large, and /tmp is often a small tmpfs.
+    with tempfile.TemporaryDirectory(dir=os.environ.get("NAVIPACK_TMP")) as work:
         t0 = time.time()
         by_name = osm_addresses(args.pbf, work)
         print(f"  read the extract in {time.time() - t0:.0f}s")
