@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cartridge builder</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css">
+<style>
+:root{
+  --ink:#f2ece1; --dim:#a79e8f; --faint:#6f685d;
+  --panel:#1b1d20; --panel2:#24272b; --edge:#343a40; --ground:#111315;
+  --amber:#f0a62c; --good:#54c184;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--ground);color:var(--ink);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+header{padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;border-bottom:1px solid var(--edge);
+  background:var(--panel)}
+h1{margin:0;font-size:18px;letter-spacing:.01em}
+h1 b{color:var(--amber)}
+.sub{color:var(--dim);font-size:13px;margin-top:3px;max-width:70ch}
+main{flex:1 1 auto;display:flex;min-height:0}
+@media (max-width:860px){main{flex-direction:column}}
+#map{flex:1 1 auto;min-height:280px}
+aside{flex:0 0 360px;max-width:100%;overflow-y:auto;background:var(--panel);
+  border-left:1px solid var(--edge);padding:16px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:860px){aside{flex-basis:auto;border-left:0;border-top:1px solid var(--edge)}}
+label{display:block;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+  margin-bottom:5px}
+input,select{width:100%;background:var(--ground);color:var(--ink);border:1px solid var(--edge);
+  border-radius:7px;padding:9px 10px;font:14px/1.3 inherit}
+input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px}
+.bbox{font-family:var(--mono);font-size:12.5px;color:var(--amber);word-break:break-all}
+pre{margin:0;background:var(--ground);border:1px solid var(--edge);border-radius:7px;
+  padding:11px;font-family:var(--mono);font-size:12px;line-height:1.5;white-space:pre-wrap;
+  word-break:break-word;color:var(--ink)}
+button{width:100%;min-height:46px;border:1px solid var(--amber);border-radius:9px;
+  background:var(--amber);color:#17140d;font-size:15px;font-weight:700;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--edge);font-weight:600;
+  min-height:40px;font-size:13.5px}
+.note{font-size:12.5px;color:var(--dim)}
+.note b{color:var(--ink)}
+.packs{border-top:1px solid var(--edge);padding-top:12px;display:flex;flex-direction:column;gap:7px}
+.pack{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+  font-size:13.5px;text-decoration:none;color:var(--ink);
+  background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:9px 11px}
+.pack:hover{border-color:var(--amber)}
+.pack span{color:var(--dim);font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+h2{font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:0}
+.maplibregl-ctrl-attrib{font-size:10px}
+</style></head><body>
+
+<header>
+  <h1>Cartridge <b>builder</b></h1>
+  <div class="sub">Drag the box over the area you ride. A cartridge holds that region's
+    map, its routing tiles and its searchable places, and the app works with no signal
+    once it is in. Building one is a server job — this page gives you the command.</div>
+</header>
+
+<main>
+  <div id="map"></div>
+  <aside>
+    <div>
+      <label for="region">Region name</label>
+      <input id="region" value="Greater Seattle" autocomplete="off">
+      <div class="note" style="margin-top:5px">Shown in the app under Settings &rsaquo; Map pack.</div>
+    </div>
+    <div>
+      <label for="slug">Short name</label>
+      <input id="slug" value="seattle" autocomplete="off" spellcheck="false">
+    </div>
+    <div>
+      <label for="geo">OpenStreetMap source</label>
+      <select id="geo"></select>
+      <div class="note" style="margin-top:5px">The Geofabrik extract your box sits in.
+        Downloaded once and reused.</div>
+    </div>
+    <div>
+      <label>Bounding box</label>
+      <div class="bbox" id="bbox">—</div>
+    </div>
+    <div>
+      <h2>Run this</h2>
+      <pre id="cmd"></pre>
+    </div>
+    <button id="copy">Copy the command</button>
+    <button class="ghost" id="reset">Put the box back</button>
+    <div class="note">Needs <b>osmium</b>, <b>docker</b> and <b>go-pmtiles</b>. The map comes out of
+      the Protomaps daily global archive in seconds; the routing tiles are the slow part,
+      about a minute for a metro area.</div>
+
+    <div class="packs">
+      <h2>Already built</h2>
+      <a class="pack" href="bayarea.navipack" download>Bay Area <span>226 MB</span></a>
+      <a class="pack" href="seattle.navipack" download>Greater Seattle <span>218 MB</span></a>
+      <a class="pack" href="nyc.navipack" download>New York City area <span>244 MB</span></a>
+      <a class="pack" href="miami.navipack" download>Miami, the Keys &amp; Ft Lauderdale <span>303 MB</span></a>
+      <a class="pack" href="arnold.voicepack.zip" download>Arnold voicepack <span>4 MB</span></a>
+    </div>
+  </aside>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js"></script>
+<script>
+// The Geofabrik extracts worth offering: the ones a cartridge is likely to sit
+// in. The path is what download.geofabrik.de wants, minus "-latest.osm.pbf".
+const SOURCES = [
+  ["north-america/us/california", "United States · California"],
+  ["north-america/us/washington", "United States · Washington"],
+  ["north-america/us/oregon", "United States · Oregon"],
+  ["north-america/us/new-york", "United States · New York"],
+  ["north-america/us/florida", "United States · Florida"],
+  ["north-america/us/texas", "United States · Texas"],
+  ["north-america/us/arizona", "United States · Arizona"],
+  ["north-america/us/nevada", "United States · Nevada"],
+  ["north-america/us/colorado", "United States · Colorado"],
+  ["north-america/us/illinois", "United States · Illinois"],
+  ["north-america/us/massachusetts", "United States · Massachusetts"],
+  ["north-america/us/pennsylvania", "United States · Pennsylvania"],
+  ["north-america/canada/british-columbia", "Canada · British Columbia"],
+  ["north-america/canada/ontario", "Canada · Ontario"],
+  ["europe/great-britain", "Europe · Great Britain"],
+  ["europe/germany", "Europe · Germany"],
+  ["europe/france", "Europe · France"],
+  ["europe/italy", "Europe · Italy"],
+  ["europe/spain", "Europe · Spain"],
+  ["australia-oceania/australia", "Australia"],
+  ["asia/japan", "Asia · Japan"],
+];
+const START = [-122.52, 47.15, -121.95, 47.75];
+const $ = (id) => document.getElementById(id);
+
+const sel = $("geo");
+sel.innerHTML = SOURCES.map(([p, label]) =>
+  `<option value="${p}"${p.endsWith("washington") ? " selected" : ""}>${label}</option>`).join("");
+
+// No tile server is needed to drag a box: a plain backdrop and the box itself.
+const map = new maplibregl.Map({
+  container: "map",
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: '&copy; OpenStreetMap contributors',
+      },
+    },
+    layers: [{ id: "osm", type: "raster", source: "osm" }],
+  },
+  center: [(START[0] + START[2]) / 2, (START[1] + START[3]) / 2],
+  zoom: 8,
+});
+map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+let box = START.slice();
+
+function area(b) {
+  // Rough km², good enough to warn about a box that would take all night.
+  const mid = (b[1] + b[3]) / 2 * Math.PI / 180;
+  return Math.abs(b[2] - b[0]) * 111.32 * Math.cos(mid) * Math.abs(b[3] - b[1]) * 110.57;
+}
+
+function draw() {
+  const [w, s, e, n] = box;
+  const ring = [[w, s], [e, s], [e, n], [w, n], [w, s]];
+  const data = { type: "Feature", geometry: { type: "Polygon", coordinates: [ring] } };
+  if (map.getSource("box")) {
+    map.getSource("box").setData(data);
+  } else {
+    map.addSource("box", { type: "geojson", data });
+    map.addLayer({ id: "box-fill", type: "fill", source: "box",
+      paint: { "fill-color": "#f0a62c", "fill-opacity": 0.14 } });
+    map.addLayer({ id: "box-line", type: "line", source: "box",
+      paint: { "line-color": "#f0a62c", "line-width": 2 } });
+  }
+  const km = Math.round(area(box));
+  $("bbox").textContent = box.map((v) => v.toFixed(3)).join(",") +
+    `  ·  about ${km.toLocaleString()} km²` + (km > 60000 ? "  ·  that is a big one" : "");
+  const slug = ($("slug").value || "region").replace(/[^a-z0-9_-]/gi, "").toLowerCase() || "region";
+  const region = ($("region").value || "A region").replace(/"/g, "'");
+  $("cmd").textContent =
+    `python3 tools/build_pack.py ${slug} \\\n` +
+    `    --region "${region}" \\\n` +
+    `    --bbox=${box.map((v) => v.toFixed(3)).join(",")} \\\n` +
+    `    --geofabrik ${sel.value}`;
+}
+
+// Dragging: press inside the box to move it, or near a corner to resize.
+let drag = null;
+function near(point, lngLat) {
+  const corners = [[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]];
+  for (let i = 0; i < 4; i++) {
+    const at = map.project(corners[i]);
+    if (Math.hypot(at.x - point.x, at.y - point.y) < 18) return i;
+  }
+  const inside = lngLat.lng > box[0] && lngLat.lng < box[2] &&
+    lngLat.lat > box[1] && lngLat.lat < box[3];
+  return inside ? "move" : null;
+}
+map.on("mousemove", (e) => {
+  if (drag) return;
+  const what = near(e.point, e.lngLat);
+  map.getCanvas().style.cursor = what === "move" ? "move" : (what === null ? "" : "nwse-resize");
+});
+map.on("mousedown", (e) => {
+  const what = near(e.point, e.lngLat);
+  if (what === null) return;
+  drag = { what, from: e.lngLat, start: box.slice() };
+  map.dragPan.disable();
+});
+map.on("mousemove", (e) => {
+  if (!drag) return;
+  const dx = e.lngLat.lng - drag.from.lng;
+  const dy = e.lngLat.lat - drag.from.lat;
+  const b = drag.start.slice();
+  if (drag.what === "move") {
+    box = [b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy];
+  } else {
+    const lng = e.lngLat.lng, lat = e.lngLat.lat;
+    // The corner she took hold of follows the pointer; the opposite one stays.
+    const fixed = [[b[2], b[3]], [b[0], b[3]], [b[0], b[1]], [b[2], b[1]]][drag.what];
+    box = [Math.min(lng, fixed[0]), Math.min(lat, fixed[1]),
+           Math.max(lng, fixed[0]), Math.max(lat, fixed[1])];
+  }
+  draw();
+});
+const stop = () => { if (drag) { drag = null; map.dragPan.enable(); } };
+map.on("mouseup", stop);
+map.on("mouseout", stop);
+
+$("slug").oninput = draw;
+$("region").oninput = draw;
+sel.onchange = draw;
+$("reset").onclick = () => {
+  box = START.slice();
+  map.fitBounds([[box[0], box[1]], [box[2], box[3]]], { padding: 60, duration: 400 });
+  draw();
+};
+$("copy").onclick = async (e) => {
+  try {
+    await navigator.clipboard.writeText($("cmd").textContent);
+    e.target.textContent = "Copied ✓";
+  } catch (err) {
+    const r = document.createRange();
+    r.selectNodeContents($("cmd"));
+    getSelection().removeAllRanges();
+    getSelection().addRange(r);
+    e.target.textContent = "Selected — press copy";
+  }
+  setTimeout(() => { e.target.textContent = "Copy the command"; }, 2200);
+};
+
+map.on("load", () => {
+  draw();
+  map.fitBounds([[box[0], box[1]], [box[2], box[3]]], { padding: 60, duration: 0 });
+});
+</script></body></html>
